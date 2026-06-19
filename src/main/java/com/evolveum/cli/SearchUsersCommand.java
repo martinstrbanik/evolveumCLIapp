@@ -1,0 +1,194 @@
+package com.evolveum.cli;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
+
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.Base64;
+import java.util.Properties;
+import java.util.concurrent.Callable;
+
+@Command(name = "search-users", description = "Search users by name/login and display name and OID")
+public class SearchUsersCommand implements Callable<Integer> {
+
+    private static final Logger logger = LoggerFactory.getLogger(SearchUsersCommand.class);
+
+    @Option(names = {"-q", "--query"}, required = true, description = "The search query (e.g., part of the username)")
+    private String query;
+
+    @Override
+    public Integer call() {
+        Properties config;
+        try {
+            config = ConfigManager.loadConfig();
+        } catch (Exception e) {
+            logger.error("Error: " + e.getMessage());
+            return 1;
+        }
+
+        String url = config.getProperty("url");
+        String login = config.getProperty("login");
+        String password = config.getProperty("password");
+
+        if (url == null || login == null || password == null) {
+            logger.error("Configuration is incomplete. Please run 'config-init' again.");
+            return 1;
+        }
+
+        try {
+            // Build Base64 Auth header
+            String authData = login + ":" + password;
+            String base64Auth = Base64.getEncoder().encodeToString(authData.getBytes(StandardCharsets.UTF_8));
+
+            String targetEndpoint = url + "/ws/rest/users/search";
+
+            // Prepare JSON payload using template
+            String jsonTemplate = """
+            {
+              "query": {
+                "filter": {
+                  "text": "name contains[origIgnoreCase] \\"%s\\""
+                }
+              }
+            }
+            """;
+
+            String payload = String.format(jsonTemplate, escapeJson(query));
+
+            HttpClient client = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(10))
+                    .build();
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(targetEndpoint))
+                    .header("Content-Type", "application/json")
+                    .header("Accept", "application/json")
+                    .header("Authorization", "Basic " + base64Auth)
+                    .POST(HttpRequest.BodyPublishers.ofString(payload, StandardCharsets.UTF_8))
+                    .build();
+
+            System.out.println("Searching for users...");
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            // Handle API responses
+            if (response.statusCode() == 200) {
+                parseAndDisplayResults(response.body());
+                return 0;
+            } else {
+                switch (response.statusCode()) {
+                    case 401:
+                        logger.error("Error 401: Unauthorized. Please check your login credentials.");
+                        break;
+                    case 403:
+                        logger.error("Error 403: Forbidden. Your user does not have required permissions.");
+                        break;
+                    default:
+                        logger.error("Error: Unexpected HTTP code " + response.statusCode());
+                        if (response.body() != null && !response.body().isEmpty()) {
+                            logger.error("Details: " + response.body());
+                        }
+                        break;
+                }
+                return 1;
+            }
+
+        } catch (Exception e) {
+            logger.error("Request failed: " + e.getMessage());
+            return 1;
+        }
+    }
+
+    private void parseAndDisplayResults(String json) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode root = mapper.readTree(json);
+            
+            // midPoint search returns: { "object": { "object": [ ... ] } }
+            JsonNode objectsArray = root.path("object").path("object");
+
+            if (objectsArray.isMissingNode() || !objectsArray.isArray() || objectsArray.isEmpty()) {
+                System.out.println("No users found matching the query.");
+                return;
+            }
+
+            System.out.println("\nMatching users found:");
+            System.out.println("----------------------------------------------------------------------");
+            System.out.printf("%-25s | %s\n", "Username / Login", "OID");
+            System.out.println("----------------------------------------------------------------------");
+
+            int count = 0;
+            for (JsonNode userNode : objectsArray) {
+                String oid = userNode.path("oid").asText("N/A");
+                
+                // Name can be a String or a PolyString object {"orig": "..."}
+                JsonNode nameNode = userNode.path("name");
+                String name = "N/A";
+                if (nameNode.isObject()) {
+                    name = nameNode.path("orig").asText("N/A");
+                } else if (nameNode.isTextual()) {
+                    name = nameNode.asText();
+                }
+
+                System.out.printf("%-25s | %s\n", name, oid);
+                count++;
+            }
+
+            System.out.println("----------------------------------------------------------------------");
+            System.out.println("Total: " + count + " user(s) found.");
+
+        } catch (Exception e) {
+            logger.error("Failed to parse search results: " + e.getMessage());
+        }
+    }
+
+    private String escapeJson(String input) {
+        if (input == null) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < input.length(); i++) {
+            char ch = input.charAt(i);
+            switch (ch) {
+                case '"':
+                    sb.append("\\\"");
+                    break;
+                case '\\':
+                    sb.append("\\\\");
+                    break;
+                case '\b':
+                    sb.append("\\b");
+                    break;
+                case '\f':
+                    sb.append("\\f");
+                    break;
+                case '\n':
+                    sb.append("\\n");
+                    break;
+                case '\r':
+                    sb.append("\\r");
+                    break;
+                case '\t':
+                    sb.append("\\t");
+                    break;
+                default:
+                    if (ch < ' ') {
+                        String t = "000" + Integer.toHexString(ch);
+                        sb.append("\\u").append(t.substring(t.length() - 4));
+                    } else {
+                        sb.append(ch);
+                    }
+                    break;
+            }
+        }
+        return sb.toString();
+    }
+}

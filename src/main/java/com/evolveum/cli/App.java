@@ -7,21 +7,28 @@ import org.jline.reader.Parser;
 import org.jline.reader.impl.DefaultParser;
 import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
-import picocli.CommandLine.Option;
 
 import java.util.concurrent.Callable;
 
 @Command(name = "evCLIapp", mixinStandardHelpOptions = true, version = "1.0",
         description = "Midpoint admin CLI APP",
-        subcommands = { CommandLine.HelpCommand.class })
+        subcommands = { 
+            CommandLine.HelpCommand.class,
+            ConfigInitCommand.class,
+            GetUserCommand.class,
+            ModifyUserCommand.class,
+            SearchUsersCommand.class
+        })
 public class App implements Callable<Integer> {
 
-    @Option(names = {"-n", "--name"}, description = "Your name", defaultValue = "World")
-    private String name;
+    private static final Logger logger = LoggerFactory.getLogger(App.class);
 
     public static void main(String[] args) {
+        logger.info("Application started with args: {}", (Object) args);
         if (args.length > 0) {
             int exitCode = new CommandLine(new App()).execute(args);
             System.exit(exitCode);
@@ -32,6 +39,7 @@ public class App implements Callable<Integer> {
 
     private static void startInteractiveShell() {
         try {
+            logger.info("Starting interactive shell mode");
             System.out.println("Starting interactive mode...");
             Terminal terminal = TerminalBuilder.builder().system(true).build();
             CommandLine cmd = new CommandLine(new App());
@@ -76,7 +84,7 @@ public class App implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
-        System.out.println("Hello, " + name + "!");
+        System.out.println("Welcome to evolveumCLIapp! Type --help to see available commands.");
         return 0;
     }
 }
