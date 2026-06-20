@@ -1,6 +1,6 @@
 package com.evolveum.cli.service;
 
-import com.evolveum.cli.client.MidPointClient;
+import com.evolveum.cli.client.IMidPointClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
@@ -17,7 +17,7 @@ import static org.mockito.Mockito.when;
 class UserServiceTest {
 
     @Mock
-    private MidPointClient mockClient;
+    private IMidPointClient mockClient;
 
     private UserService userService;
 

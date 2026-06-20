@@ -53,7 +53,8 @@ class ModifyUserCommandTest {
                  when(mock.modifyUser(anyString(), anyString(), anyString(), anyString())).thenReturn(mockResponse);
              })) {
 
-            mockedConfig.when(ConfigManager::loadConfig).thenReturn(testConfig);
+            mockedConfig.when(() -> ConfigManager.resolveConfigPath(any())).thenReturn("~/.evcliapp.properties");
+            mockedConfig.when(() -> ConfigManager.loadConfig(anyString())).thenReturn(testConfig);
 
             int exitCode = cmd.execute("-o", "00000000-0000-0000-0000-000000000002", "-p", "description", "-v", "new value");
 
@@ -77,7 +78,8 @@ class ModifyUserCommandTest {
                  when(mock.modifyUser(anyString(), anyString(), anyString(), anyString())).thenReturn(mockResponse);
              })) {
 
-            mockedConfig.when(ConfigManager::loadConfig).thenReturn(testConfig);
+            mockedConfig.when(() -> ConfigManager.resolveConfigPath(any())).thenReturn("~/.evcliapp.properties");
+            mockedConfig.when(() -> ConfigManager.loadConfig(anyString())).thenReturn(testConfig);
 
             int exitCode = cmd.execute("-o", "00000000-0000-0000-0000-000000000002", "-p", "name", "-v", "existing");
 

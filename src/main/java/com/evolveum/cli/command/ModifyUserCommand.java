@@ -18,6 +18,9 @@ public class ModifyUserCommand implements Callable<Integer> {
 
     private static final Logger logger = LoggerFactory.getLogger(ModifyUserCommand.class);
 
+    @Option(names = {"-c", "--config"}, description = "Path to config file (default: ~/.evcliapp.properties)")
+    private String configPath;
+
     @Option(names = {"-o", "--oid"}, required = true, description = "The OID of the user to modify")
     private String oid;
 
@@ -46,7 +49,8 @@ public class ModifyUserCommand implements Callable<Integer> {
 
         Properties config;
         try {
-            config = ConfigManager.loadConfig();
+            String resolvedPath = ConfigManager.resolveConfigPath(configPath);
+            config = ConfigManager.loadConfig(resolvedPath);
         } catch (Exception e) {
             logger.error("Error: {}", e.getMessage());
             return 1;
@@ -62,7 +66,8 @@ public class ModifyUserCommand implements Callable<Integer> {
         }
 
         try {
-            MidPointClient client = new MidPointClient(url, login, password);
+            String authHeader = MidPointClient.createBasicAuthHeader(login, password);
+            MidPointClient client = new MidPointClient(url, authHeader);
             UserService userService = new UserService(client);
 
             System.out.println("Sending modification request...");

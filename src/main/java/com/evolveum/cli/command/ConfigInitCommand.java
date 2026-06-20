@@ -15,6 +15,9 @@ public class ConfigInitCommand implements Callable<Integer> {
 
     private static final Logger logger = LoggerFactory.getLogger(ConfigInitCommand.class);
 
+    @Option(names = {"-c", "--config"}, description = "Path to config file (default: ~/.evcliapp.properties)")
+    private String configPath;
+
     @Option(names = {"-u", "--url"}, required = true, description = "Midpoint base URL (e.g. https://demo.evolveum.com/midpoint)")
     private String url;
 
@@ -32,8 +35,9 @@ public class ConfigInitCommand implements Callable<Integer> {
                 url = url.substring(0, url.length() - 1);
             }
 
-            ConfigManager.saveConfig(url, login, password);
-            System.out.println("Configuration successfully saved to ~/.evcliapp.properties");
+            String resolvedPath = ConfigManager.resolveConfigPath(configPath);
+            ConfigManager.saveConfig(resolvedPath, url, login, password);
+            System.out.println("Configuration successfully saved to " + resolvedPath);
             return 0;
         } catch (Exception e) {
             logger.error("Failed to save configuration: {}", e.getMessage());

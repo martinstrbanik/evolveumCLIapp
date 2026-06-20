@@ -43,12 +43,14 @@ class ConfigInitCommandTest {
             String login = "administrator";
             String password = "password123";
 
+            mockedConfigManager.when(() -> ConfigManager.resolveConfigPath(any())).thenReturn("~/.evcliapp.properties");
+
             // When
             int exitCode = cmd.execute("-u", url, "-l", login, "-p", password);
 
             // Then
             assertEquals(0, exitCode);
-            mockedConfigManager.verify(() -> ConfigManager.saveConfig(url, login, password), times(1));
+            mockedConfigManager.verify(() -> ConfigManager.saveConfig("~/.evcliapp.properties", url, login, password), times(1));
             assertTrue(outContent.toString().contains("Configuration successfully saved"));
         }
     }
@@ -62,12 +64,14 @@ class ConfigInitCommandTest {
             String login = "admin";
             String password = "pwd";
 
+            mockedConfigManager.when(() -> ConfigManager.resolveConfigPath(any())).thenReturn("~/.evcliapp.properties");
+
             // When
             int exitCode = cmd.execute("-u", urlWithSlash, "-l", login, "-p", password);
 
             // Then
             assertEquals(0, exitCode);
-            mockedConfigManager.verify(() -> ConfigManager.saveConfig(expectedUrl, login, password), times(1));
+            mockedConfigManager.verify(() -> ConfigManager.saveConfig("~/.evcliapp.properties", expectedUrl, login, password), times(1));
         }
     }
 
@@ -83,8 +87,10 @@ class ConfigInitCommandTest {
     @Test
     void testConfigInitFailureHandling() {
         try (MockedStatic<ConfigManager> mockedConfigManager = mockStatic(ConfigManager.class)) {
+            mockedConfigManager.when(() -> ConfigManager.resolveConfigPath(any())).thenReturn("~/.evcliapp.properties");
+
             // Given: ConfigManager throws exception
-            mockedConfigManager.when(() -> ConfigManager.saveConfig(anyString(), anyString(), anyString()))
+            mockedConfigManager.when(() -> ConfigManager.saveConfig(anyString(), anyString(), anyString(), anyString()))
                     .thenThrow(new IOException("Disk full"));
 
             // When

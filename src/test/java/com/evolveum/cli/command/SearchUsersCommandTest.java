@@ -54,7 +54,8 @@ class SearchUsersCommandTest {
                  when(mock.searchUsers(anyString())).thenReturn(mockResponse);
              })) {
 
-            mockedConfig.when(ConfigManager::loadConfig).thenReturn(testConfig);
+            mockedConfig.when(() -> ConfigManager.resolveConfigPath(any())).thenReturn("~/.evcliapp.properties");
+            mockedConfig.when(() -> ConfigManager.loadConfig(anyString())).thenReturn(testConfig);
 
             int exitCode = cmd.execute("-q", "peter");
 
@@ -77,7 +78,8 @@ class SearchUsersCommandTest {
                  when(mock.searchUsers(anyString())).thenReturn(mockResponse);
              })) {
 
-            mockedConfig.when(ConfigManager::loadConfig).thenReturn(testConfig);
+            mockedConfig.when(() -> ConfigManager.resolveConfigPath(any())).thenReturn("~/.evcliapp.properties");
+            mockedConfig.when(() -> ConfigManager.loadConfig(anyString())).thenReturn(testConfig);
 
             int exitCode = cmd.execute("-q", "nonexistent");
 
@@ -95,7 +97,8 @@ class SearchUsersCommandTest {
                  when(mock.searchUsers(anyString())).thenReturn(mockResponse);
              })) {
 
-            mockedConfig.when(ConfigManager::loadConfig).thenReturn(testConfig);
+            mockedConfig.when(() -> ConfigManager.resolveConfigPath(any())).thenReturn("~/.evcliapp.properties");
+            mockedConfig.when(() -> ConfigManager.loadConfig(anyString())).thenReturn(testConfig);
 
             int exitCode = cmd.execute("-q", "admin");
 
@@ -113,7 +116,8 @@ class SearchUsersCommandTest {
                  when(mock.searchUsers(anyString())).thenReturn(mockResponse);
              })) {
 
-            mockedConfig.when(ConfigManager::loadConfig).thenReturn(testConfig);
+            mockedConfig.when(() -> ConfigManager.resolveConfigPath(any())).thenReturn("~/.evcliapp.properties");
+            mockedConfig.when(() -> ConfigManager.loadConfig(anyString())).thenReturn(testConfig);
 
             int exitCode = cmd.execute("-q", "badformat");
 

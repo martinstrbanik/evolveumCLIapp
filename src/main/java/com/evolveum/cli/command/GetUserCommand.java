@@ -18,6 +18,9 @@ public class GetUserCommand implements Callable<Integer> {
 
     private static final Logger logger = LoggerFactory.getLogger(GetUserCommand.class);
 
+    @Option(names = {"-c", "--config"}, description = "Path to config file (default: ~/.evcliapp.properties)")
+    private String configPath;
+
     @Option(names = {"-o", "--oid"}, required = true, description = "The OID of the user to fetch")
     private String oid;
 
@@ -31,7 +34,8 @@ public class GetUserCommand implements Callable<Integer> {
 
         Properties config;
         try {
-            config = ConfigManager.loadConfig();
+            String resolvedPath = ConfigManager.resolveConfigPath(configPath);
+            config = ConfigManager.loadConfig(resolvedPath);
         } catch (Exception e) {
             logger.error("Error: {}", e.getMessage());
             return 1;
@@ -47,7 +51,8 @@ public class GetUserCommand implements Callable<Integer> {
         }
 
         try {
-            MidPointClient client = new MidPointClient(url, login, password);
+            String authHeader = MidPointClient.createBasicAuthHeader(login, password);
+            MidPointClient client = new MidPointClient(url, authHeader);
             UserService userService = new UserService(client);
 
             HttpResponse<String> response = userService.getUser(oid);

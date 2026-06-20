@@ -22,7 +22,8 @@ class MidPointClientTest {
         wireMockServer.start();
         configureFor("localhost", wireMockServer.port());
         
-        client = new MidPointClient("http://localhost:" + wireMockServer.port() + "/midpoint", "admin", "secret");
+        String authHeader = MidPointClient.createBasicAuthHeader("admin", "secret");
+        client = new MidPointClient("http://localhost:" + wireMockServer.port() + "/midpoint", authHeader);
     }
 
     @AfterEach

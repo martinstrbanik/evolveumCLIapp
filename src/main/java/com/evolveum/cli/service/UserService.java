@@ -1,79 +1,67 @@
 package com.evolveum.cli.service;
 
-import com.evolveum.cli.client.MidPointClient;
+import com.evolveum.cli.client.IMidPointClient;
+import com.evolveum.cli.exception.MidPointCommunicationException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.http.HttpResponse;
 
-public class UserService {
+public class UserService implements IUserService {
     private static final Logger logger = LoggerFactory.getLogger(UserService.class);
-    private final MidPointClient client;
+    private final IMidPointClient client;
+    private final ObjectMapper objectMapper;
 
-    public UserService(MidPointClient client) {
+    public UserService(IMidPointClient client) {
         this.client = client;
+        this.objectMapper = new ObjectMapper();
     }
 
-    public HttpResponse<String> getUser(String oid) throws Exception {
+    @Override
+    public HttpResponse<String> getUser(String oid) throws MidPointCommunicationException {
         logger.info("Fetching user with OID: {}", oid);
         return client.get("/ws/rest/users/" + oid + "?exclude=@metadata");
     }
 
-    public HttpResponse<String> searchUsers(String query) throws Exception {
+    @Override
+    public HttpResponse<String> searchUsers(String query) throws MidPointCommunicationException {
         logger.info("Searching users with query: {}", query);
-        String jsonTemplate = """
-        {
-          "query": {
-            "filter": {
-              "text": "name contains[origIgnoreCase] \\"%s\\""
-            }
-          }
+        try {
+            ObjectNode rootNode = objectMapper.createObjectNode();
+            ObjectNode queryNode = rootNode.putObject("query");
+            ObjectNode filterNode = queryNode.putObject("filter");
+            filterNode.put("text", "name contains[origIgnoreCase] \"" + escapeQuotes(query) + "\"");
+
+            String payload = objectMapper.writeValueAsString(rootNode);
+            return client.search("/ws/rest/users/search", payload);
+        } catch (Exception e) {
+            throw new MidPointCommunicationException("Error creating search payload", e);
         }
-        """;
-        String payload = String.format(jsonTemplate, escapeJson(query));
-        return client.search("/ws/rest/users/search", payload);
     }
 
-    public HttpResponse<String> modifyUser(String oid, String path, String value, String type) throws Exception {
+    @Override
+    public HttpResponse<String> modifyUser(String oid, String path, String value, String type) throws MidPointCommunicationException {
         logger.info("Modifying user OID: {}, path: {}, type: {}", oid, path, type);
-        String jsonTemplate = """
-        {
-          "objectModification": {
-            "itemDelta": {
-              "modificationType": "%s",
-              "path": "%s",
-              "value": "%s"
-            }
-          }
+        try {
+            ObjectNode rootNode = objectMapper.createObjectNode();
+            ObjectNode objectModNode = rootNode.putObject("objectModification");
+            ObjectNode itemDeltaNode = objectModNode.putObject("itemDelta");
+
+            itemDeltaNode.put("modificationType", type.toLowerCase());
+            itemDeltaNode.put("path", path);
+            itemDeltaNode.put("value", value);
+
+            String payload = objectMapper.writeValueAsString(rootNode);
+            return client.patch("/ws/rest/users/" + oid, payload);
+        } catch (Exception e) {
+            throw new MidPointCommunicationException("Error creating modification payload", e);
         }
-        """;
-        String payload = String.format(jsonTemplate, type.toLowerCase(), path, escapeJson(value));
-        return client.patch("/ws/rest/users/" + oid, payload);
     }
 
-    private String escapeJson(String input) {
+    private String escapeQuotes(String input) {
         if (input == null) return "";
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < input.length(); i++) {
-            char ch = input.charAt(i);
-            switch (ch) {
-                case '"' -> sb.append("\\\"");
-                case '\\' -> sb.append("\\\\");
-                case '\b' -> sb.append("\\b");
-                case '\f' -> sb.append("\\f");
-                case '\n' -> sb.append("\\n");
-                case '\r' -> sb.append("\\r");
-                case '\t' -> sb.append("\\t");
-                default -> {
-                    if (ch < ' ') {
-                        String t = "000" + Integer.toHexString(ch);
-                        sb.append("\\u").append(t.substring(t.length() - 4));
-                    } else {
-                        sb.append(ch);
-                    }
-                }
-            }
-        }
-        return sb.toString();
+        return input.replace("\"", "\\\"");
     }
 }

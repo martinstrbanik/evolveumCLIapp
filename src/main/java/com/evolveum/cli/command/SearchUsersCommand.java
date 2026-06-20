@@ -19,6 +19,9 @@ public class SearchUsersCommand implements Callable<Integer> {
 
     private static final Logger logger = LoggerFactory.getLogger(SearchUsersCommand.class);
 
+    @Option(names = {"-c", "--config"}, description = "Path to config file (default: ~/.evcliapp.properties)")
+    private String configPath;
+
     @Option(names = {"-q", "--query"}, required = true, description = "The search query (e.g., part of the username)")
     private String query;
 
@@ -26,7 +29,8 @@ public class SearchUsersCommand implements Callable<Integer> {
     public Integer call() {
         Properties config;
         try {
-            config = ConfigManager.loadConfig();
+            String resolvedPath = ConfigManager.resolveConfigPath(configPath);
+            config = ConfigManager.loadConfig(resolvedPath);
         } catch (Exception e) {
             logger.error("Error: {}", e.getMessage());
             return 1;
@@ -42,10 +46,11 @@ public class SearchUsersCommand implements Callable<Integer> {
         }
 
         try {
-            MidPointClient client = new MidPointClient(url, login, password);
+            String authHeader = MidPointClient.createBasicAuthHeader(login, password);
+            MidPointClient client = new MidPointClient(url, authHeader);
             UserService userService = new UserService(client);
 
-            System.out.println("Searching for users...");
+            logger.info("Searching for users...");
             HttpResponse<String> response = userService.searchUsers(query);
             logger.info("Received response from midPoint: HTTP {}", response.statusCode());
 
@@ -90,10 +95,11 @@ public class SearchUsersCommand implements Callable<Integer> {
                 return;
             }
 
-            System.out.println("\nMatching users found:");
-            System.out.println("----------------------------------------------------------------------");
-            System.out.printf("%-25s | %s\n", "Username / Login", "OID");
-            System.out.println("----------------------------------------------------------------------");
+            StringBuilder sb = new StringBuilder();
+            sb.append("\nMatching users found:\n");
+            sb.append("----------------------------------------------------------------------\n");
+            sb.append(String.format("%-25s | %s\n", "Username / Login", "OID"));
+            sb.append("----------------------------------------------------------------------\n");
 
             int count = 0;
             for (JsonNode userNode : objectsArray) {
@@ -108,12 +114,14 @@ public class SearchUsersCommand implements Callable<Integer> {
                     name = nameNode.asText();
                 }
 
-                System.out.printf("%-25s | %s\n", name, oid);
+                sb.append(String.format("%-25s | %s\n", name, oid));
                 count++;
             }
 
-            System.out.println("----------------------------------------------------------------------");
-            System.out.println("Total: " + count + " user(s) found.");
+            sb.append("----------------------------------------------------------------------\n");
+            sb.append("Total: ").append(count).append(" user(s) found.");
+            
+            System.out.println(sb.toString());
 
         } catch (Exception e) {
             logger.error("Failed to parse search results: {}", e.getMessage());

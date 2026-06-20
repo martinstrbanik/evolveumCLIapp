@@ -19,8 +19,11 @@ The CLI supports two modes of execution depending on the arguments provided.
 If you pass arguments, the application executes the command and exits immediately. This is ideal for CI/CD, crons, or scripts.
 
 ```bash
-# Initialize configuration
+# Initialize configuration (default path ~/.evcliapp.properties)
 java -jar target/evolveumCLIapp-1.0-SNAPSHOT.jar config-init -u https://demo.evolveum.com/midpoint -l administrator -p IGA4ever
+
+# Initialize configuration with custom file path
+java -jar target/evolveumCLIapp-1.0-SNAPSHOT.jar config-init -c ./custom-config.properties -u https://demo.evolveum.com/midpoint -l administrator -p IGA4ever
 
 # Get user by OID
 java -jar target/evolveumCLIapp-1.0-SNAPSHOT.jar get-user -o 00000000-0000-0000-0000-000000000002
@@ -43,9 +46,14 @@ evCLIapp> get-user -o 00000000-0000-0000-0000-000000000002
 evCLIapp> exit
 ```
 
+## Common Options
+
+All commands support an optional configuration path parameter:
+- `-c, --config <configPath>`: Path to the configuration file. If not provided, it defaults to `~/.evcliapp.properties`.
+
 ## Supported Commands
 
-- `config-init`: Set up midPoint connection properties (saved securely to your user home as `~/.evcliapp.properties`).
+- `config-init`: Set up midPoint connection properties (passwords are obfuscated via Base64 before saving).
 - `get-user`: Fetch an exact user by standard midPoint OID and return the JSON payload.
 - `modify-user`: Modify a user attribute by OID. Supports `add`, `replace`, and `delete` operations.
 - `search-users`: Search users by name/login and display a simple list of matching usernames and OIDs.
