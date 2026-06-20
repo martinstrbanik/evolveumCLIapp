@@ -20,6 +20,7 @@
         <logback.version>1.5.16</logback.version>
         <junit.version>5.11.4</junit.version>
         <mockito.version>5.14.2</mockito.version>
+        <wiremock.version>3.3.1</wiremock.version>
     </properties>
 
     <dependencies>
@@ -67,6 +68,12 @@
             <groupId>org.mockito</groupId>
             <artifactId>mockito-junit-jupiter</artifactId>
             <version>${mockito.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.wiremock</groupId>
+            <artifactId>wiremock</artifactId>
+            <version>${wiremock.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

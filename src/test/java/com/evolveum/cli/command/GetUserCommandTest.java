@@ -1,18 +1,22 @@
 package com.evolveum.cli.command;
 
-import com.evolveum.cli.client.MidPointClient;
 import com.evolveum.cli.config.ConfigManager;
 import com.evolveum.cli.service.UserService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import picocli.CommandLine;
 
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
 import java.net.http.HttpResponse;
 import java.util.Properties;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 class GetUserCommandTest {
@@ -20,9 +24,12 @@ class GetUserCommandTest {
     private GetUserCommand getUserCommand;
     private CommandLine cmd;
     private Properties testConfig;
+    private final ByteArrayOutputStream outContent = new ByteArrayOutputStream();
+    private final PrintStream originalOut = System.out;
 
     @BeforeEach
     void setUp() {
+        System.setOut(new PrintStream(outContent));
         getUserCommand = new GetUserCommand();
         cmd = new CommandLine(getUserCommand);
         
@@ -30,6 +37,11 @@ class GetUserCommandTest {
         testConfig.setProperty("url", "http://localhost:8080/midpoint");
         testConfig.setProperty("login", "admin");
         testConfig.setProperty("password", "secret");
+    }
+
+    @AfterEach
+    void restoreStreams() {
+        System.setOut(originalOut);
     }
 
     @Test
@@ -48,6 +60,7 @@ class GetUserCommandTest {
 
             assertEquals(0, exitCode);
             verify(mockedService.constructed().get(0)).getUser("00000000-0000-0000-0000-000000000002");
+            assertTrue(outContent.toString().contains("test-user"));
         }
     }
 

@@ -7,10 +7,12 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import picocli.CommandLine;
 
-import java.io.File;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.PrintStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
@@ -18,11 +20,19 @@ class ConfigInitCommandTest {
 
     private ConfigInitCommand configInitCommand;
     private CommandLine cmd;
+    private final ByteArrayOutputStream outContent = new ByteArrayOutputStream();
+    private final PrintStream originalOut = System.out;
 
     @BeforeEach
     void setUp() {
+        System.setOut(new PrintStream(outContent));
         configInitCommand = new ConfigInitCommand();
         cmd = new CommandLine(configInitCommand);
+    }
+
+    @AfterEach
+    void restoreStreams() {
+        System.setOut(originalOut);
     }
 
     @Test
@@ -39,6 +49,7 @@ class ConfigInitCommandTest {
             // Then
             assertEquals(0, exitCode);
             mockedConfigManager.verify(() -> ConfigManager.saveConfig(url, login, password), times(1));
+            assertTrue(outContent.toString().contains("Configuration successfully saved"));
         }
     }
 
