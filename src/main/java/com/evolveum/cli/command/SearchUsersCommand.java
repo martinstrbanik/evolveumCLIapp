@@ -31,8 +31,13 @@ public class SearchUsersCommand implements Callable<Integer> {
         try {
             String resolvedPath = ConfigManager.resolveConfigPath(configPath);
             config = ConfigManager.loadConfig(resolvedPath);
+        } catch (com.evolveum.cli.exception.ConfigurationNotFoundException e) {
+            System.err.println(e.getMessage());
+            logger.error("Configuration error: {}", e.getMessage());
+            return 1;
         } catch (Exception e) {
-            logger.error("Error: {}", e.getMessage());
+            System.err.println("Failed to load configuration. Check logs/app.log for details.");
+            logger.error("Error loading config: {}", e.getMessage(), e);
             return 1;
         }
 
@@ -79,9 +84,13 @@ public class SearchUsersCommand implements Callable<Integer> {
                 return 1;
             }
 
+        } catch (com.evolveum.cli.exception.MidPointCommunicationException e) {
+            logger.error("MidPoint communication failed: {}", e.getMessage(), e);
+            System.err.println("Communication error: " + e.getMessage() + ". Please check the log file (logs/app.log) for more details.");
+            return 1;
         } catch (Exception e) {
-            logger.error("Request failed: {}", e.getMessage());
-            System.err.println("Request failed: " + e.getMessage() + ". Please check the log file (logs/app.log) for more details.");
+            logger.error("Unexpected error: {}", e.getMessage(), e);
+            System.err.println("Unexpected error occurred: " + e.getMessage() + ". Please check the log file (logs/app.log) for more details.");
             return 1;
         }
     }

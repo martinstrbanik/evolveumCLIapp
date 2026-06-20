@@ -38,12 +38,14 @@ public class ModifyUserCommand implements Callable<Integer> {
         // Validate OID format
         if (!oid.matches("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")) {
             logger.error("Error: Provided OID is invalid. It should be a UUID format.");
+            System.err.println("Error: Provided OID is invalid. It should be a UUID format.");
             return 1;
         }
 
         // Validate modification type
         if (!type.equalsIgnoreCase("add") && !type.equalsIgnoreCase("replace") && !type.equalsIgnoreCase("delete")) {
             logger.error("Error: Invalid modification type. Allowed values are: add, replace, delete.");
+            System.err.println("Error: Invalid modification type. Allowed values are: add, replace, delete.");
             return 1;
         }
 
@@ -51,8 +53,13 @@ public class ModifyUserCommand implements Callable<Integer> {
         try {
             String resolvedPath = ConfigManager.resolveConfigPath(configPath);
             config = ConfigManager.loadConfig(resolvedPath);
+        } catch (com.evolveum.cli.exception.ConfigurationNotFoundException e) {
+            System.err.println(e.getMessage());
+            logger.error("Configuration error: {}", e.getMessage());
+            return 1;
         } catch (Exception e) {
-            logger.error("Error: {}", e.getMessage());
+            System.err.println("Failed to load configuration. Check logs/app.log for details.");
+            logger.error("Error loading config: {}", e.getMessage(), e);
             return 1;
         }
 
@@ -117,9 +124,13 @@ public class ModifyUserCommand implements Callable<Integer> {
 
             return (response.statusCode() == 200 || response.statusCode() == 204) ? 0 : 1;
 
+        } catch (com.evolveum.cli.exception.MidPointCommunicationException e) {
+            logger.error("MidPoint communication failed: {}", e.getMessage(), e);
+            System.err.println("Communication error: " + e.getMessage() + ". Please check the log file (logs/app.log) for more details.");
+            return 1;
         } catch (Exception e) {
-            logger.error("Request failed: {}", e.getMessage());
-            System.err.println("Request failed: " + e.getMessage() + ". Please check the log file (logs/app.log) for more details.");
+            logger.error("Unexpected error: {}", e.getMessage(), e);
+            System.err.println("Unexpected error occurred: " + e.getMessage() + ". Please check the log file (logs/app.log) for more details.");
             return 1;
         }
     }
