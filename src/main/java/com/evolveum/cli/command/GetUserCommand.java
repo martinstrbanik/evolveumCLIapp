@@ -65,18 +65,22 @@ public class GetUserCommand implements Callable<Integer> {
                     break;
                 case 401:
                     logger.error("Error 401: Unauthorized. Please check your login credentials and if REST API is enabled.");
+                    System.err.println("Error 401: Unauthorized. Check logs/app.log for details.");
                     break;
                 case 403:
                     logger.error("Error 403: Forbidden. Your user does not have required permissions.");
+                    System.err.println("Error 403: Forbidden. Check logs/app.log for details.");
                     break;
                 case 404:
                     logger.error("Error 404: Source not found. No user exists with OID: {}", oid);
+                    System.err.println("Error 404: User not found. Check logs/app.log for details.");
                     break;
                 default:
                     logger.error("Error: Unexpected HTTP code {}", response.statusCode());
                     if (response.body() != null && !response.body().isEmpty()) {
                         logger.error("Message: {}", response.body());
                     }
+                    System.err.println("Error: Unexpected HTTP code " + response.statusCode() + ". Please check the log file (logs/app.log) for more details.");
                     break;
             }
 
@@ -84,6 +88,7 @@ public class GetUserCommand implements Callable<Integer> {
 
         } catch (Exception e) {
             logger.error("Request failed: {}", e.getMessage());
+            System.err.println("Request failed: " + e.getMessage() + ". Please check the log file (logs/app.log) for more details.");
             return 1;
         }
     }

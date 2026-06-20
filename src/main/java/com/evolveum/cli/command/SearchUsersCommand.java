@@ -62,15 +62,18 @@ public class SearchUsersCommand implements Callable<Integer> {
                 switch (response.statusCode()) {
                     case 401:
                         logger.error("Error 401: Unauthorized. Please check your login credentials.");
+                        System.err.println("Error 401: Unauthorized. Check logs/app.log for details.");
                         break;
                     case 403:
                         logger.error("Error 403: Forbidden. Your user does not have required permissions.");
+                        System.err.println("Error 403: Forbidden. Check logs/app.log for details.");
                         break;
                     default:
                         logger.error("Error: Unexpected HTTP code {}", response.statusCode());
                         if (response.body() != null && !response.body().isEmpty()) {
                             logger.error("Details: {}", response.body());
                         }
+                        System.err.println("Error: Unexpected HTTP code " + response.statusCode() + ". Please check the log file (logs/app.log) for more details.");
                         break;
                 }
                 return 1;
@@ -78,6 +81,7 @@ public class SearchUsersCommand implements Callable<Integer> {
 
         } catch (Exception e) {
             logger.error("Request failed: {}", e.getMessage());
+            System.err.println("Request failed: " + e.getMessage() + ". Please check the log file (logs/app.log) for more details.");
             return 1;
         }
     }

@@ -82,27 +82,33 @@ public class ModifyUserCommand implements Callable<Integer> {
                     break;
                 case 400:
                     logger.error("Error 400: Bad Request. Please check if the path '{}' is valid and the value is correct.", path);
+                    System.err.println("Error 400: Bad Request. Check logs/app.log for details.");
                     if (response.body() != null && !response.body().isEmpty()) {
                         logger.error("Details: {}", response.body());
                     }
                     break;
                 case 401:
                     logger.error("Error 401: Unauthorized. Please check your login credentials.");
+                    System.err.println("Error 401: Unauthorized. Check logs/app.log for details.");
                     break;
                 case 403:
                     logger.error("Error 403: Forbidden. Your user does not have required permissions.");
+                    System.err.println("Error 403: Forbidden. Check logs/app.log for details.");
                     break;
                 case 404:
                     logger.error("Error 404: User not found with OID: {}", oid);
+                    System.err.println("Error 404: User not found. Check logs/app.log for details.");
                     break;
                 case 409:
                     logger.error("Error 409: Conflict. The modification violates midPoint constraints.");
+                    System.err.println("Error 409: Conflict. Check logs/app.log for details.");
                     if (response.body() != null && !response.body().isEmpty()) {
                         logger.error("Details: {}", response.body());
                     }
                     break;
                 default:
                     logger.error("Error: Unexpected HTTP code {}", response.statusCode());
+                    System.err.println("Error: Unexpected HTTP code " + response.statusCode() + ". Please check the log file (logs/app.log) for more details.");
                     if (response.body() != null && !response.body().isEmpty()) {
                         logger.error("Details: {}", response.body());
                     }
@@ -113,6 +119,7 @@ public class ModifyUserCommand implements Callable<Integer> {
 
         } catch (Exception e) {
             logger.error("Request failed: {}", e.getMessage());
+            System.err.println("Request failed: " + e.getMessage() + ". Please check the log file (logs/app.log) for more details.");
             return 1;
         }
     }

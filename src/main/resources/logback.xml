@@ -1,8 +1,20 @@
 <configuration>
-    <!-- File Appender: Logs to app.log -->
-    <appender name="FILE" class="ch.qos.logback.core.FileAppender">
+    <!-- Rolling File Appender: Logs to app.log with size and time-based rotation -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>logs/app.log</file>
         <append>true</append>
+        
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- Rollover daily and when the file reaches maxFileSize -->
+            <fileNamePattern>logs/app-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <!-- Each file should be at most 5MB -->
+            <maxFileSize>5MB</maxFileSize>
+            <!-- Keep 10 days worth of history -->
+            <maxHistory>10</maxHistory>
+            <!-- Total size of all archive files -->
+            <totalSizeCap>100MB</totalSizeCap>
+        </rollingPolicy>
+
         <encoder>
             <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n</pattern>
         </encoder>
