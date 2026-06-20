@@ -46,6 +46,35 @@ evCLIapp> get-user -o 00000000-0000-0000-0000-000000000002
 evCLIapp> exit
 ```
 
+## Docker
+
+You can also run the CLI application using Docker. A multi-stage Dockerfile is provided, which means you don't even need Java or Maven installed on your host machine to build and run it.
+
+### Build the Image
+```bash
+docker build -t evolveum-cli .
+```
+
+### Run via Docker
+
+**1. Interactive Mode:**
+To run the interactive shell, use the `-it` flags. We also mount the config file from the host machine to the container so your credentials persist across runs:
+```bash
+docker run -it -v ~/.evcliapp.properties:/root/.evcliapp.properties evolveum-cli
+```
+
+**2. Direct Execution:**
+To run a specific command, just append it to the `docker run` command:
+```bash
+docker run -v ~/.evcliapp.properties:/root/.evcliapp.properties evolveum-cli search-users -q "peter"
+```
+
+**3. Logs Mapping:**
+If you want to access the log files generated inside the container, mount the `/app/logs` directory to your host:
+```bash
+docker run -it -v ~/.evcliapp.properties:/root/.evcliapp.properties -v $(pwd)/logs:/app/logs evolveum-cli
+```
+
 ## Common Options
 
 All commands support an optional configuration path parameter:
