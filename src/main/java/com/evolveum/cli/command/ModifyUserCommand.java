@@ -1,17 +1,15 @@
-package com.evolveum.cli;
+package com.evolveum.cli.command;
+
+import com.evolveum.cli.client.MidPointClient;
+import com.evolveum.cli.config.ConfigManager;
+import com.evolveum.cli.service.UserService;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
-import java.util.Base64;
 import java.util.Properties;
 import java.util.concurrent.Callable;
 
@@ -50,7 +48,7 @@ public class ModifyUserCommand implements Callable<Integer> {
         try {
             config = ConfigManager.loadConfig();
         } catch (Exception e) {
-            logger.error("Error: " + e.getMessage());
+            logger.error("Error: {}", e.getMessage());
             return 1;
         }
 
@@ -64,40 +62,12 @@ public class ModifyUserCommand implements Callable<Integer> {
         }
 
         try {
-            // Build Base64 Auth header
-            String authData = login + ":" + password;
-            String base64Auth = Base64.getEncoder().encodeToString(authData.getBytes(StandardCharsets.UTF_8));
-
-            String targetEndpoint = url + "/ws/rest/users/" + oid;
-
-            // Prepare JSON payload using template
-            String jsonTemplate = """
-            {
-              "objectModification": {
-                "itemDelta": {
-                  "modificationType": "%s",
-                  "path": "%s",
-                  "value": "%s"
-                }
-              }
-            }
-            """;
-
-            String payload = String.format(jsonTemplate, type.toLowerCase(), path, escapeJson(value));
-
-            HttpClient client = HttpClient.newBuilder()
-                    .connectTimeout(Duration.ofSeconds(10))
-                    .build();
-
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(targetEndpoint))
-                    .header("Content-Type", "application/json")
-                    .header("Authorization", "Basic " + base64Auth)
-                    .method("PATCH", HttpRequest.BodyPublishers.ofString(payload, StandardCharsets.UTF_8))
-                    .build();
+            MidPointClient client = new MidPointClient(url, login, password);
+            UserService userService = new UserService(client);
 
             System.out.println("Sending modification request...");
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = userService.modifyUser(oid, path, value, type);
+            logger.info("Received response from midPoint: HTTP {}", response.statusCode());
 
             // Handle API responses
             switch (response.statusCode()) {
@@ -106,9 +76,9 @@ public class ModifyUserCommand implements Callable<Integer> {
                     System.out.println("Success: User modified successfully (HTTP " + response.statusCode() + ").");
                     break;
                 case 400:
-                    logger.error("Error 400: Bad Request. Please check if the path '" + path + "' is valid and the value is correct.");
+                    logger.error("Error 400: Bad Request. Please check if the path '{}' is valid and the value is correct.", path);
                     if (response.body() != null && !response.body().isEmpty()) {
-                        logger.error("Details: " + response.body());
+                        logger.error("Details: {}", response.body());
                     }
                     break;
                 case 401:
@@ -118,18 +88,18 @@ public class ModifyUserCommand implements Callable<Integer> {
                     logger.error("Error 403: Forbidden. Your user does not have required permissions.");
                     break;
                 case 404:
-                    logger.error("Error 404: User not found with OID: " + oid);
+                    logger.error("Error 404: User not found with OID: {}", oid);
                     break;
                 case 409:
                     logger.error("Error 409: Conflict. The modification violates midPoint constraints.");
                     if (response.body() != null && !response.body().isEmpty()) {
-                        logger.error("Details: " + response.body());
+                        logger.error("Details: {}", response.body());
                     }
                     break;
                 default:
-                    logger.error("Error: Unexpected HTTP code " + response.statusCode());
+                    logger.error("Error: Unexpected HTTP code {}", response.statusCode());
                     if (response.body() != null && !response.body().isEmpty()) {
-                        logger.error("Details: " + response.body());
+                        logger.error("Details: {}", response.body());
                     }
                     break;
             }
@@ -137,51 +107,9 @@ public class ModifyUserCommand implements Callable<Integer> {
             return (response.statusCode() == 200 || response.statusCode() == 204) ? 0 : 1;
 
         } catch (Exception e) {
-            logger.error("Request failed: " + e.getMessage());
+            logger.error("Request failed: {}", e.getMessage());
             return 1;
         }
     }
-
-    private String escapeJson(String input) {
-        if (input == null) {
-            return "";
-        }
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < input.length(); i++) {
-            char ch = input.charAt(i);
-            switch (ch) {
-                case '"':
-                    sb.append("\\\"");
-                    break;
-                case '\\':
-                    sb.append("\\\\");
-                    break;
-                case '\b':
-                    sb.append("\\b");
-                    break;
-                case '\f':
-                    sb.append("\\f");
-                    break;
-                case '\n':
-                    sb.append("\\n");
-                    break;
-                case '\r':
-                    sb.append("\\r");
-                    break;
-                case '\t':
-                    sb.append("\\t");
-                    break;
-                default:
-                    // Reference: JSON allows any other unicode character directly
-                    if (ch < ' ') {
-                        String t = "000" + Integer.toHexString(ch);
-                        sb.append("\\u").append(t.substring(t.length() - 4));
-                    } else {
-                        sb.append(ch);
-                    }
-                    break;
-            }
-        }
-        return sb.toString();
-    }
 }
+

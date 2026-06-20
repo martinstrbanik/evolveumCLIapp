@@ -1,17 +1,15 @@
-package com.evolveum.cli;
+package com.evolveum.cli.command;
+
+import com.evolveum.cli.client.MidPointClient;
+import com.evolveum.cli.config.ConfigManager;
+import com.evolveum.cli.service.UserService;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
-import java.util.Base64;
 import java.util.Properties;
 import java.util.concurrent.Callable;
 
@@ -35,7 +33,7 @@ public class GetUserCommand implements Callable<Integer> {
         try {
             config = ConfigManager.loadConfig();
         } catch (Exception e) {
-            logger.error("Error: " + e.getMessage());
+            logger.error("Error: {}", e.getMessage());
             return 1;
         }
 
@@ -49,25 +47,11 @@ public class GetUserCommand implements Callable<Integer> {
         }
 
         try {
-            // Build Base64 Auth header
-            String authData = login + ":" + password;
-            String base64Auth = Base64.getEncoder().encodeToString(authData.getBytes(StandardCharsets.UTF_8));
+            MidPointClient client = new MidPointClient(url, login, password);
+            UserService userService = new UserService(client);
 
-            // Prepare endpoint for fetching User object with raw options (as per docs)
-            String targetEndpoint = url + "/ws/rest/users/" + oid + "?exclude=@metadata";
-
-            HttpClient client = HttpClient.newBuilder()
-                    .connectTimeout(Duration.ofSeconds(10))
-                    .build();
-
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(targetEndpoint))
-                    .header("Accept", "application/json")
-                    .header("Authorization", "Basic " + base64Auth)
-                    .GET()
-                    .build();
-
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = userService.getUser(oid);
+            logger.info("Received response from midPoint: HTTP {}", response.statusCode());
 
             // Handle API responses based on HTTP status codes
             switch (response.statusCode()) {
@@ -81,12 +65,12 @@ public class GetUserCommand implements Callable<Integer> {
                     logger.error("Error 403: Forbidden. Your user does not have required permissions.");
                     break;
                 case 404:
-                    logger.error("Error 404: Source not found. No user exists with OID: " + oid);
+                    logger.error("Error 404: Source not found. No user exists with OID: {}", oid);
                     break;
                 default:
-                    logger.error("Error: Unexpected HTTP code " + response.statusCode());
+                    logger.error("Error: Unexpected HTTP code {}", response.statusCode());
                     if (response.body() != null && !response.body().isEmpty()) {
-                        logger.error("Message: " + response.body());
+                        logger.error("Message: {}", response.body());
                     }
                     break;
             }
@@ -94,8 +78,9 @@ public class GetUserCommand implements Callable<Integer> {
             return (response.statusCode() == 200) ? 0 : 1;
 
         } catch (Exception e) {
-            logger.error("Request failed: " + e.getMessage());
+            logger.error("Request failed: {}", e.getMessage());
             return 1;
         }
     }
 }
+

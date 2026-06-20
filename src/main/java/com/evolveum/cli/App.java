@@ -9,6 +9,12 @@ import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.evolveum.cli.command.ConfigInitCommand;
+import com.evolveum.cli.command.GetUserCommand;
+import com.evolveum.cli.command.ModifyUserCommand;
+import com.evolveum.cli.command.SearchUsersCommand;
+
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 

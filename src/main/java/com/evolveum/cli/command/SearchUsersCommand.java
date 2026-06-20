@@ -1,5 +1,8 @@
-package com.evolveum.cli;
+package com.evolveum.cli.command;
 
+import com.evolveum.cli.client.MidPointClient;
+import com.evolveum.cli.config.ConfigManager;
+import com.evolveum.cli.service.UserService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -7,13 +10,7 @@ import org.slf4j.LoggerFactory;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
-import java.util.Base64;
 import java.util.Properties;
 import java.util.concurrent.Callable;
 
@@ -31,7 +28,7 @@ public class SearchUsersCommand implements Callable<Integer> {
         try {
             config = ConfigManager.loadConfig();
         } catch (Exception e) {
-            logger.error("Error: " + e.getMessage());
+            logger.error("Error: {}", e.getMessage());
             return 1;
         }
 
@@ -45,39 +42,12 @@ public class SearchUsersCommand implements Callable<Integer> {
         }
 
         try {
-            // Build Base64 Auth header
-            String authData = login + ":" + password;
-            String base64Auth = Base64.getEncoder().encodeToString(authData.getBytes(StandardCharsets.UTF_8));
-
-            String targetEndpoint = url + "/ws/rest/users/search";
-
-            // Prepare JSON payload using template
-            String jsonTemplate = """
-            {
-              "query": {
-                "filter": {
-                  "text": "name contains[origIgnoreCase] \\"%s\\""
-                }
-              }
-            }
-            """;
-
-            String payload = String.format(jsonTemplate, escapeJson(query));
-
-            HttpClient client = HttpClient.newBuilder()
-                    .connectTimeout(Duration.ofSeconds(10))
-                    .build();
-
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(targetEndpoint))
-                    .header("Content-Type", "application/json")
-                    .header("Accept", "application/json")
-                    .header("Authorization", "Basic " + base64Auth)
-                    .POST(HttpRequest.BodyPublishers.ofString(payload, StandardCharsets.UTF_8))
-                    .build();
+            MidPointClient client = new MidPointClient(url, login, password);
+            UserService userService = new UserService(client);
 
             System.out.println("Searching for users...");
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = userService.searchUsers(query);
+            logger.info("Received response from midPoint: HTTP {}", response.statusCode());
 
             // Handle API responses
             if (response.statusCode() == 200) {
@@ -92,9 +62,9 @@ public class SearchUsersCommand implements Callable<Integer> {
                         logger.error("Error 403: Forbidden. Your user does not have required permissions.");
                         break;
                     default:
-                        logger.error("Error: Unexpected HTTP code " + response.statusCode());
+                        logger.error("Error: Unexpected HTTP code {}", response.statusCode());
                         if (response.body() != null && !response.body().isEmpty()) {
-                            logger.error("Details: " + response.body());
+                            logger.error("Details: {}", response.body());
                         }
                         break;
                 }
@@ -102,7 +72,7 @@ public class SearchUsersCommand implements Callable<Integer> {
             }
 
         } catch (Exception e) {
-            logger.error("Request failed: " + e.getMessage());
+            logger.error("Request failed: {}", e.getMessage());
             return 1;
         }
     }
@@ -146,49 +116,8 @@ public class SearchUsersCommand implements Callable<Integer> {
             System.out.println("Total: " + count + " user(s) found.");
 
         } catch (Exception e) {
-            logger.error("Failed to parse search results: " + e.getMessage());
+            logger.error("Failed to parse search results: {}", e.getMessage());
         }
-    }
-
-    private String escapeJson(String input) {
-        if (input == null) {
-            return "";
-        }
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < input.length(); i++) {
-            char ch = input.charAt(i);
-            switch (ch) {
-                case '"':
-                    sb.append("\\\"");
-                    break;
-                case '\\':
-                    sb.append("\\\\");
-                    break;
-                case '\b':
-                    sb.append("\\b");
-                    break;
-                case '\f':
-                    sb.append("\\f");
-                    break;
-                case '\n':
-                    sb.append("\\n");
-                    break;
-                case '\r':
-                    sb.append("\\r");
-                    break;
-                case '\t':
-                    sb.append("\\t");
-                    break;
-                default:
-                    if (ch < ' ') {
-                        String t = "000" + Integer.toHexString(ch);
-                        sb.append("\\u").append(t.substring(t.length() - 4));
-                    } else {
-                        sb.append(ch);
-                    }
-                    break;
-            }
-        }
-        return sb.toString();
     }
 }
+

@@ -1,7 +1,10 @@
-package com.evolveum.cli;
+package com.evolveum.cli.command;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.evolveum.cli.config.ConfigManager;
+
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
@@ -33,7 +36,7 @@ public class ConfigInitCommand implements Callable<Integer> {
             System.out.println("Configuration successfully saved to ~/.evcliapp.properties");
             return 0;
         } catch (Exception e) {
-            logger.error("Failed to save configuration: " + e.getMessage());
+            logger.error("Failed to save configuration: {}", e.getMessage());
             return 1;
         }
     }

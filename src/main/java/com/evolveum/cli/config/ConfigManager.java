@@ -1,4 +1,4 @@
-package com.evolveum.cli;
+package com.evolveum.cli.config;
 
 import java.io.File;
 import java.io.FileInputStream;
