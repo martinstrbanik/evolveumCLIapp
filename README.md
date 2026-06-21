@@ -131,6 +131,9 @@ The application logs its operations (including detailed REST API error responses
 - The log file rotates daily or when it reaches 5MB.
 - Standard output (console) only shows human-readable summaries or explicit instructions. For debugging issues like `401 Unauthorized` or `409 Conflict`, always inspect the `app.log` file.
 
+## E2E tests
+- End to end tests can be found in e2e.md file
+
 # Task 2
 
 ## Proposed Architecture: Connector-Based Synchronization (Hub-and-Spoke)
@@ -138,36 +141,36 @@ The application logs its operations (including detailed REST API error responses
 To synchronize data efficiently between IGA System 1 (Registration) and IGA System 2 (Integration & Provisioning), I would implement a **Hub-and-Spoke architecture** using **optimized connectors running under trusted administrator privileges** rather than utilizing public, high-overhead APIs.
 
 ### 1. Inbound Layer (System 1 as a Source)
-*   I would configure **System 1** to act as a source system (Spoke). 
-*   Instead of exposing a generic REST API, System 1 will expose a dedicated data stream optimized for reading (e.g. special direct database connection to a read-only replica of its database view).
+-   I would configure **System 1** to act as a source system (Spoke). 
+-   Instead of exposing a generic REST API, System 1 will expose a dedicated data stream optimized for reading (e.g. special direct database connection to a read-only replica of its database view).
 
 ### 2. The Hub Layer (System 2 with an Outbound Connector)
-*   **System 2** (Hub) will use a native connector (e.g., ConnId framework) to pull data from System 1.
-*   Since the connector is configured by a Trusted Administrator, System 2 bypasses the slow attribute-level ACL checks and approval policy evaluations that would normally slow down a public API caller. The system "trusts" the incoming data from the connector.
+-   **System 2** (Hub) will use a native connector (e.g., ConnId framework) to pull data from System 1.
+-   Since the connector is configured by a Trusted Administrator, System 2 bypasses the slow attribute-level ACL checks and approval policy evaluations that would normally slow down a public API caller. The system "trusts" the incoming data from the connector.
 
 
 # Task 3
 I would approach the troubleshooting process using two alternative strategies:
 
 ## Strategy A: Fast Diagnostics Using AI
-* **Payload Analysis via AI**: As a first step, I would feed the error message and the sent JSON into an AI assistant, asking for potential issues within the SCIM 2.0 context. Note: Since the JSON contains sensitive user data, I would mask or anonymize any personal identifiable information first to comply with data protection regulations.
+- **Payload Analysis via AI**: As a first step, I would feed the error message and the sent JSON into an AI assistant, asking for potential issues within the SCIM 2.0 context. Note: Since the JSON contains sensitive user data, I would mask or anonymize any personal identifiable information first to comply with data protection regulations.
 
-* The AI would likely immediately point out that the created and lastModified attributes inside the meta object are defined as readOnly according to the RFC 7643 (SCIM 2.0) specification. The client (our connector) should not send these attributes during a POST operation at all, as they must be generated exclusively by the target server.
+- The AI would likely immediately point out that the created and lastModified attributes inside the meta object are defined as readOnly according to the RFC 7643 (SCIM 2.0) specification. The client (our connector) should not send these attributes during a POST operation at all, as they must be generated exclusively by the target server.
 
-* **Verification and Fix**: I would verify this rule in the official SCIM 2.0 documentation. Then, I would investigate why our connector or mapping is sending this data. I would check, whether it is a misconfiguration in the IGA outbound mapping or a bug in the connector's codebase.
+- **Verification and Fix**: I would verify this rule in the official SCIM 2.0 documentation. Then, I would investigate why our connector or mapping is sending this data. I would check, whether it is a misconfiguration in the IGA outbound mapping or a bug in the connector's codebase.
 
 ## Strategy B: Traditional Deep-Dive Analysis (Without AI)
 If AI was unavailable, or if the read-only attribute restriction did not come to mind immediately, I would proceed analytically from source to target:
 
-* **Knowledge Base Check**: I would check our internal knowledge base and issue tracker (e.g., Jira) to see if a similar issue has already been resolved for this specific customer infrastructure.
+- **Knowledge Base Check**: I would check our internal knowledge base and issue tracker (e.g., Jira) to see if a similar issue has already been resolved for this specific customer infrastructure.
 
-* **Data Flow Analysis (Inbound)**: I would verify the source systems. Are these outdated timestamps already coming into our IGA system from the inbound mappings, or are they generated within the IGA system itself?
+- **Data Flow Analysis (Inbound)**: I would verify the source systems. Are these outdated timestamps already coming into our IGA system from the inbound mappings, or are they generated within the IGA system itself?
 
-* **IGA & Connector Debugging**: If the data inside the IGA system is correct (the source system were not the issue), the issue lies in the outbound phase. I would enable TRACE / DEBUG logging for provisioning and the connector in a test environment, create a test user and analyze the logs to find out exactly where and why the incorrect date is being injected into the payload.
+- **IGA & Connector Debugging**: If the data inside the IGA system is correct (the source system were not the issue), the issue lies in the outbound phase. I would enable TRACE / DEBUG logging for provisioning and the connector in a test environment, create a test user and analyze the logs to find out exactly where and why the incorrect date is being injected into the payload.
 
-* **Problem Isolation (Postman)**: I would replicate the raw payload and request in Postman and send it directly to the customer's test environment, completely bypassing our solution. This would help isolate the issue, confirming whether the request structure itself is faulty.
+- **Problem Isolation (Postman)**: I would replicate the raw payload and request in Postman and send it directly to the customer's test environment, completely bypassing our solution. This would help isolate the issue, confirming whether the request structure itself is faulty.
 
-* If I got stuck and no other ideas would come to mind, I would consult with my coworkers, either via direct message or some development groupchat.
+- If I got stuck and no other ideas would come to mind, I would consult with my coworkers, either via direct message or some development groupchat.
 
 
 
