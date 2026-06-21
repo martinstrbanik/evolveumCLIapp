@@ -60,29 +60,28 @@ public class SearchUsersCommand implements Callable<Integer> {
             logger.info("Received response from midPoint: HTTP {}", response.statusCode());
 
             // Handle API responses
-            if (response.statusCode() == 200) {
-                parseAndDisplayResults(response.body());
-                return 0;
-            } else {
-                switch (response.statusCode()) {
-                    case 401:
-                        logger.error("Error 401: Unauthorized. Please check your login credentials.");
-                        System.err.println("Error 401: Unauthorized. Check logs/app.log for details.");
-                        break;
-                    case 403:
-                        logger.error("Error 403: Forbidden. Your user does not have required permissions.");
-                        System.err.println("Error 403: Forbidden. Check logs/app.log for details.");
-                        break;
-                    default:
-                        logger.error("Error: Unexpected HTTP code {}", response.statusCode());
-                        if (response.body() != null && !response.body().isEmpty()) {
-                            logger.error("Details: {}", response.body());
-                        }
-                        System.err.println("Error: Unexpected HTTP code " + response.statusCode() + ". Please check the log file (logs/app.log) for more details.");
-                        break;
-                }
-                return 1;
+            switch (response.statusCode()) {
+                case 200:
+                    parseAndDisplayResults(response.body());
+                    break;
+                case 401:
+                    logger.error("Error 401: Unauthorized. Please check your login credentials.");
+                    System.err.println("Error 401: Unauthorized. Check logs/app.log for details.");
+                    break;
+                case 403:
+                    logger.error("Error 403: Forbidden. Your user does not have required permissions.");
+                    System.err.println("Error 403: Forbidden. Check logs/app.log for details.");
+                    break;
+                default:
+                    logger.error("Error: Unexpected HTTP code {}", response.statusCode());
+                    if (response.body() != null && !response.body().isEmpty()) {
+                        logger.error("Details: {}", response.body());
+                    }
+                    System.err.println("Error: Unexpected HTTP code " + response.statusCode() + ". Please check the log file (logs/app.log) for more details.");
+                    break;
             }
+
+            return (response.statusCode() == 200) ? 0 : 1;
 
         } catch (com.evolveum.cli.exception.MidPointCommunicationException e) {
             logger.error("MidPoint communication failed: {}", e.getMessage(), e);
