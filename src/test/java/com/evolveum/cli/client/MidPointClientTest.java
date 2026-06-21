@@ -1,5 +1,6 @@
 package com.evolveum.cli.client;
 
+import com.evolveum.cli.exception.MidPointCommunicationException;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -10,6 +11,7 @@ import java.net.http.HttpResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class MidPointClientTest {
 
@@ -54,6 +56,32 @@ class MidPointClientTest {
     }
 
     @Test
+    void testGetRequest_Unauthorized() throws Exception {
+        stubFor(get(urlEqualTo("/midpoint/ws/rest/users/123"))
+                .willReturn(aResponse()
+                        .withStatus(401)
+                        .withBody("Unauthorized access")));
+
+        HttpResponse<String> response = client.get("/ws/rest/users/123");
+        
+        assertEquals(401, response.statusCode());
+        assertEquals("Unauthorized access", response.body());
+    }
+
+    @Test
+    void testGetRequest_NotFound() throws Exception {
+        stubFor(get(urlEqualTo("/midpoint/ws/rest/users/999"))
+                .willReturn(aResponse()
+                        .withStatus(404)
+                        .withBody("User not found")));
+
+        HttpResponse<String> response = client.get("/ws/rest/users/999");
+        
+        assertEquals(404, response.statusCode());
+        assertEquals("User not found", response.body());
+    }
+
+    @Test
     void testSearchRequest() throws Exception {
         stubFor(post(urlEqualTo("/midpoint/ws/rest/users/search"))
                 .withHeader("Authorization", containing("Basic "))
@@ -70,6 +98,18 @@ class MidPointClientTest {
     }
 
     @Test
+    void testSearchRequest_ServerError() throws Exception {
+        stubFor(post(urlEqualTo("/midpoint/ws/rest/users/search"))
+                .willReturn(aResponse()
+                        .withStatus(500)
+                        .withBody("Internal Server Error")));
+
+        HttpResponse<String> response = client.search("/ws/rest/users/search", "{\"query\":\"test\"}");
+        
+        assertEquals(500, response.statusCode());
+    }
+
+    @Test
     void testPatchRequest() throws Exception {
         stubFor(patch(urlEqualTo("/midpoint/ws/rest/users/123"))
                 .withHeader("Authorization", containing("Basic "))
@@ -81,5 +121,14 @@ class MidPointClientTest {
         HttpResponse<String> response = client.patch("/ws/rest/users/123", "{\"modification\":\"test\"}");
         
         assertEquals(204, response.statusCode());
+    }
+
+    @Test
+    void testCommunicationException() {
+        MidPointClient badClient = new MidPointClient("http://localhost:1/midpoint", "Basic dummy");
+        
+        assertThrows(MidPointCommunicationException.class, () -> {
+            badClient.get("/ws/rest/users/123");
+        });
     }
 }
